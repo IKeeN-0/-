@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ดัดตนดี – ต้นแบบ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f4ef; --card:#ffffff; --ink:#1f2a2e; --muted:#5f6b70; --line:#e2ded5;
+    --brand:#2f6f62; --brand-soft:#e3efeb; --warn:#c2551c; --warn-soft:#fbe9df; --ok:#2e7d4f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Sarabun',system-ui,sans-serif;font-size:17px;line-height:1.5}
+  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  header b{font-size:20px;color:var(--brand)}
+  .tabs{display:flex;gap:6px}
+  .tabs button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+  .tabs button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  main{max-width:720px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  h2{margin:0 0 8px;font-size:21px}
+  p{margin:6px 0}
+  .muted{color:var(--muted);font-size:15px}
+  .btn{display:block;width:100%;border:0;border-radius:12px;padding:14px;font:inherit;font-weight:700;background:var(--brand);color:#fff;cursor:pointer;margin-top:12px}
+  .btn.ghost{background:var(--brand-soft);color:var(--brand)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  label.chk{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+  label.chk input{width:22px;height:22px;margin-top:2px}
+  .alert{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:12px;margin-top:10px;font-weight:600}
+  .hidden{display:none!important}
+  input[type=range]{width:100%}
+  .score{font-size:40px;font-weight:700;text-align:center;color:var(--brand)}
+  .stage{position:relative;width:100%;aspect-ratio:3/4;background:#111;border-radius:14px;overflow:hidden}
+  .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+  .hud{position:absolute;left:10px;right:10px;top:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+  .pill{background:rgba(255,255,255,.92);border-radius:999px;padding:6px 12px;font-size:15px;font-weight:600}
+  .cue{position:absolute;left:10px;right:10px;bottom:10px;background:rgba(255,255,255,.95);border-radius:12px;padding:12px;text-align:center;font-weight:700;font-size:19px}
+  .cue.warn{background:var(--warn);color:#fff}
+  .breath{width:64px;height:64px;border-radius:50%;background:var(--brand);opacity:.85;margin:0 auto;transition:transform 3s ease-in-out}
+  .row{display:flex;gap:10px;align-items:center}
+  .stop{position:absolute;right:10px;bottom:84px;background:var(--warn);color:#fff;border:0;border-radius:999px;padding:12px 18px;font:inherit;font-weight:700;pointer-events:auto}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px}
+  .day{aspect-ratio:1;border-radius:8px;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:13px}
+  .day.done{background:var(--brand);color:#fff}
+  .day.flag{background:var(--warn);color:#fff}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+  footer{max-width:720px;margin:0 auto;padding:8px 16px 32px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <b>ดัดตนดี</b>
+  <div class="tabs">
+    <button id="tabUser" class="on">ผู้รับบริการ</button>
+    <button id="tabDoc">หน้าจอแพทย์</button>
+  </div>
+</header>
+ 
+<main id="userView">
+  <!-- 1. คัดกรอง -->
+  <section id="sScreen" class="card">
+    <h2>ใบสั่งของคุณ: ชุดคอ บ่า ไหล่</h2>
+    <p class="muted">สั่งโดยแพทย์แผนไทย (ข้อมูลตัวอย่าง) · วันละ 1 ครั้ง</p>
+    <p style="margin-top:12px"><b>ก่อนเริ่ม วันนี้คุณมีข้อใดต่อไปนี้หรือไม่</b></p>
+    <div id="screenList"></div>
+    <div id="screenAlert" class="alert hidden">ระบบแนะนำให้พักการฝึกวันนี้ และปรึกษาแพทย์แผนไทยที่สั่งท่าก่อนฝึกต่อ ระบบได้แจ้งแพทย์แล้ว (จำลอง)</div>
+    <button id="btnScreen" class="btn">ไม่มีข้อใดเลย ไปต่อ</button>
+  </section>
+ 
+  <!-- 2. คะแนนปวดก่อน -->
+  <section id="sPainBefore" class="card hidden">
+    <h2>ตอนนี้ปวดแค่ไหน</h2>
+    <p class="muted">0 = ไม่ปวดเลย · 10 = ปวดมากที่สุด</p>
+    <div class="score" id="painBeforeVal">5</div>
+    <input id="painBefore" type="range" min="0" max="10" value="5">
+    <button id="btnStart" class="btn">เปิดกล้องและเริ่มฝึก</button>
+    <p class="muted" style="margin-top:10px">วางมือถือให้เห็นตั้งแต่ศีรษะถึงสะโพก ภาพประมวลผลบนเครื่องนี้เท่านั้น ไม่ถูกส่งออก</p>
+  </section>
+ 
+  <!-- 3. ฝึก -->
+  <section id="sTrain" class="hidden">
+    <div class="card" style="padding:12px">
+      <div class="row" style="justify-content:space-between">
+        <div><b id="poseName"></b><div class="muted" id="poseNote"></div></div>
+        <div class="breath" id="breath" title="จังหวะหายใจ"></div>
+      </div>
+    </div>
+    <div class="stage">
+      <video id="video" playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <div class="hud"><span class="pill" id="repPill">รอบ 0/3</span><span class="pill" id="statePill">กำลังโหลด AI…</span></div>
+      <button class="stop" id="btnStop">หยุด / เจ็บ</button>
+      <div class="cue" id="cue">กำลังเตรียมกล้อง…</div>
+    </div>
+  </section>
+ 
+  <!-- 4. สรุป -->
+  <section id="sSummary" class="card hidden">
+    <h2 id="sumTitle">ฝึกครบแล้ว</h2>
+    <p class="muted">ตอนนี้ปวดแค่ไหน</p>
+    <div class="score" id="painAfterVal">5</div>
+    <input id="painAfter" type="range" min="0" max="10" value="5">
+    <label class="chk"><input type="checkbox" id="redflag"> <span>ระหว่างฝึกมีอาการเจ็บแปลบ ชา อ่อนแรง เวียนศีรษะ หรือหายใจไม่สะดวก</span></label>
+    <div id="sumBox" style="margin-top:12px"></div>
+    <button id="btnSend" class="btn">บันทึกและส่งผลให้แพทย์ (จำลอง)</button>
+    <button id="btnAgain" class="btn ghost">กลับหน้าแรก</button>
+  </section>
+</main>
+ 
+<main id="docView" class="hidden">
+  <section class="card">
+    <h2>คุณมิ้นท์ (ข้อมูลตัวอย่าง)</h2>
+    <p class="muted">ใบสั่ง: ชุดคอ บ่า ไหล่ · วันละ 1 ครั้ง · 14 วันล่าสุด</p>
+    <div class="grid" id="calendar"></div>
+    <p class="muted" style="margin-top:8px">เขียว = ฝึกแล้ว · ส้ม = มีการแจ้งเตือน · เทา = ไม่ได้ฝึก</p>
+  </section>
+  <section class="card">
+    <h2>แนวโน้มคะแนนปวด (0–10)</h2>
+    <svg id="trend" viewBox="0 0 320 140" width="100%" role="img" aria-label="แนวโน้มคะแนนปวด"></svg>
+  </section>
+  <section class="card">
+    <h2>รายการแจ้งเตือน</h2>
+    <table id="alertTable"><thead><tr><th>วันที่</th><th>เรื่อง</th></tr></thead><tbody></tbody></table>
+  </section>
+  <section class="card" id="liveCard">
+    <h2>ผลจากการสาธิตล่าสุด</h2>
+    <div id="liveBox" class="muted">ยังไม่มีข้อมูล ลองฝึกในแท็บ "ผู้รับบริการ" แล้วกดส่งผล</div>
+  </section>
+</main>
+ 
+<footer>ต้นแบบเพื่อการสาธิตในการแข่งขัน · ท่าและเกณฑ์ในต้นแบบเป็นค่าตัวอย่าง ต้องผ่านการทบทวนโดยผู้เชี่ยวชาญด้านการแพทย์แผนไทยก่อนใช้จริง · ไม่ใช่เครื่องมือวินิจฉัยโรค</footer>
+ 
+<script type="module">
+import { PoseLandmarker, FilesetResolver, DrawingUtils } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
+ 
+/* ===== ค่าที่ทีมปรับได้: ให้ นศ.แผนไทยกำหนดท่าจริงและช่วงปลอดภัย ===== */
+const POSE = {
+  name: 'ท่าตัวอย่าง: ยืดแขนเหนือศีรษะ',
+  note: 'แทนด้วยท่าจริงจากชุดท่าของกรมฯ',
+  enterAngle: 140,   // มุมแขน-ลำตัว (องศา) ที่ถือว่าเข้าท่าแล้ว
+  exitAngle: 50,     // มุมที่ถือว่าลดแขนลงแล้ว
+  holdSec: 6,        // ค้างท่ากี่วินาที
+  overHoldSec: 5,    // ค้างเกินกำหนดกี่วินาทีจึงเตือน
+  maxLean: 0.14,     // ลำตัวเอียงข้างเกินสัดส่วนนี้ของความยาวลำตัว = เตือน
+  maxAsym: 35,       // แขนสองข้างต่างกันเกินกี่องศา = แนะนำปรับ
+  tremor: 0.035,     // ข้อมือสั่นเกินสัดส่วนนี้ของความกว้างไหล่ = เตือน
+  reps: 3
+};
+const SCREEN_ITEMS = [
+  'ความดันโลหิตสูงที่ยังควบคุมไม่ได้',
+  'ตั้งครรภ์',
+  'เพิ่งผ่าตัด หรือมีการบาดเจ็บบริเวณคอ ไหล่ หรือหลัง',
+  'กระดูกพรุน หรือเคยกระดูกหักบริเวณที่จะฝึก',
+  'ชา อ่อนแรง หรือปวดร้าวลงแขนขณะนี้',
+  'เวียนศีรษะ มีไข้ หรือรู้สึกไม่สบายวันนี้'
+];
+/* ======================================================================= */
+ 
+const $ = id => document.getElementById(id);
+const show = (...ids) => ['sScreen','sPainBefore','sTrain','sSummary'].forEach(s => $(s).classList.toggle('hidden', !ids.includes(s)));
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+ 
+/* ---------- เสียง ---------- */
+let thVoice = null;
+function pickVoice(){ const v = speechSynthesis?.getVoices?.() || []; thVoice = v.find(x => x.lang && x.lang.toLowerCase().startsWith('th')) || null; }
+if ('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+function speak(text){
+  if (!thVoice) return;           // ไม่มีเสียงไทยในเครื่อง: แสดงข้อความบนจอแทน
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.voice = thVoice; u.lang = thVoice.lang; u.rate = 0.95;
+  speechSynthesis.speak(u);
+}
+let actx = null;
+function beep(){
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = 660; g.gain.value = 0.08; o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + 0.18);
+  } catch {}
+}
+ 
+/* ---------- 1. คัดกรอง ---------- */
+$('screenList').innerHTML = SCREEN_ITEMS.map((t, i) => `<label class="chk"><input type="checkbox" data-i="${i}"><span>${t}</span></label>`).join('');
+$('screenList').addEventListener('change', () => {
+  const any = [...document.querySelectorAll('#screenList input')].some(c => c.checked);
+  $('screenAlert').classList.toggle('hidden', !any);
+  $('btnScreen').disabled = any;
+});
+$('btnScreen').onclick = () => show('sPainBefore');
+$('painBefore').oninput = e => $('painBeforeVal').textContent = e.target.value;
+$('painAfter').oninput = e => $('painAfterVal').textContent = e.target.value;
+ 
+/* ---------- 2. AI จับท่า ---------- */
+let landmarker = null, stream = null, running = false, lastVideoTime = -1;
+const video = $('video'), canvas = $('canvas'), ctx = canvas.getContext('2d');
+const draw = new DrawingUtils(ctx);
+ 
+async function loadModel(){
+  const files = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+  const opts = d => ({
+    baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task', delegate: d },
+    runningMode: 'VIDEO', numPoses: 1
+  });
+  try { return await PoseLandmarker.createFromOptions(files, opts('GPU')); }
+  catch { return await PoseLandmarker.createFromOptions(files, opts('CPU')); }
+}
+ 
+$('btnStart').onclick = async () => {
+  show('sTrain');
+  $('poseName').textContent = POSE.name; $('poseNote').textContent = POSE.note;
+  resetSession();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+    video.srcObject = stream; await video.play();
+    $('cue').textContent = 'กำลังโหลด AI…';
+    landmarker = landmarker || await loadModel();
+    running = true; $('statePill').textContent = 'พร้อม';
+    setCue('ยืนตรง แขนแนบลำตัว ให้เห็นตั้งแต่ศีรษะถึงสะโพก');
+    requestAnimationFrame(loop);
+  } catch (err) {
+    setCue('เปิดกล้องไม่ได้ กรุณาอนุญาตการใช้กล้อง และเปิดผ่านลิงก์ https', true);
+  }
+};
+$('btnStop').onclick = () => { session.stoppedEarly = true; finish(); };
+ 
+/* ---------- ตัวช่วยคำนวณ ---------- */
+const P = (lm, i) => ({ x: lm[i].x * canvas.width, y: lm[i].y * canvas.height, v: lm[i].visibility ?? 1 });
+function angle(a, b, c){ // มุมที่จุด b
+  const v1 = { x: a.x - b.x, y: a.y - b.y }, v2 = { x: c.x - b.x, y: c.y - b.y };
+  const cos = (v1.x*v2.x + v1.y*v2.y) / (Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y) + 1e-6);
+  return Math.acos(Math.max(-1, Math.min(1, cos))) * 180 / Math.PI;
+}
+const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+let smooth = null;
+function smoothLm(lm){ // ลดการสั่นของจุด
+  if (!smooth) { smooth = lm.map(p => ({ ...p })); return smooth; }
+  smooth = lm.map((p, i) => ({ x: smooth[i].x * 0.5 + p.x * 0.5, y: smooth[i].y * 0.5 + p.y * 0.5, z: p.z, visibility: p.visibility }));
+  return smooth;
+}
+ 
+/* ---------- state machine ของท่า ---------- */
+let session, st;
+function resetSession(){
+  session = { start: Date.now(), reps: 0, alerts: {}, stoppedEarly: false };
+  st = { phase: 'ready', since: performance.now(), lastAlert: {}, wrist: [] };
+  smooth = null; updateHud();
+}
+function setCue(t, warn = false){ const c = $('cue'); c.textContent = t; c.classList.toggle('warn', warn); }
+function breath(mode){ $('breath').style.transform = mode === 'in' ? 'scale(1.6)' : mode === 'out' ? 'scale(0.8)' : 'scale(1.2)'; }
+function updateHud(){ $('repPill').textContent = `รอบ ${session.reps}/${POSE.reps}`; }
+function alertOnce(key, text){
+  const now = performance.now();
+  if (now - (st.lastAlert[key] || 0) < 3500) return;
+  st.lastAlert[key] = now; session.alerts[key] = (session.alerts[key] || 0) + 1;
+  setCue(text, true); beep(); speak(text);
+}
+function go(phase, cue, say, b){ st.phase = phase; st.since = performance.now(); if (cue) setCue(cue); if (say) speak(say); if (b) breath(b); $('statePill').textContent = { ready:'เตรียม', raise:'เข้าท่า', hold:'ค้างท่า', lower:'คลายท่า' }[phase] || phase; }
+ 
+function evaluate(lm){
+  const ls = P(lm,11), rs = P(lm,12), le = P(lm,13), re = P(lm,14), lw = P(lm,15), rw = P(lm,16), lh = P(lm,23), rh = P(lm,24);
+  if ([ls, rs, le, re, lh, rh].some(p => p.v < 0.5)) { setCue('ถอยห่างอีกนิด ให้เห็นตั้งแต่ศีรษะถึงสะโพก'); return; }
+  const aL = angle(lh, ls, le), aR = angle(rh, rs, re), arm = (aL + aR) / 2;
+  const ms = mid(ls, rs), mh = mid(lh, rh), torso = Math.hypot(ms.x - mh.x, ms.y - mh.y) + 1e-6;
+  const lean = Math.abs(ms.x - mh.x) / torso;
+  const shW = Math.hypot(ls.x - rs.x, ls.y - rs.y) + 1e-6;
+  st.wrist.push(mid(lw, rw)); if (st.wrist.length > 15) st.wrist.shift();
+  const t = (performance.now() - st.since) / 1000;
+ 
+  // ความปลอดภัย: ใช้ได้ทุกช่วงของท่า
+  if (lean > POSE.maxLean) { alertOnce('lean', 'ลำตัวเอียง ค่อยๆ กลับมาตั้งตรง ไม่ต้องฝืน'); }
+ 
+  if (st.phase === 'ready') {
+    if (arm < POSE.exitAngle && t > 1.5) go('raise', 'ค่อยๆ ยกแขนขึ้นเหนือศีรษะ พร้อมหายใจเข้า', 'ค่อยๆ ยกแขนขึ้น หายใจเข้า', 'in');
+  } else if (st.phase === 'raise') {
+    if (Math.abs(aL - aR) > POSE.maxAsym && arm > 90) alertOnce('asym', 'ยกแขนสองข้างให้เท่ากัน');
+    if (arm >= POSE.enterAngle) { go('hold', 'ค้างไว้ หายใจช้าๆ ตามธรรมชาติ', 'ค้างไว้ หายใจช้าๆ ไม่ต้องกลั้น', 'hold'); st.wrist = []; }
+  } else if (st.phase === 'hold') {
+    const left = Math.max(0, Math.ceil(POSE.holdSec - t));
+    if (!$('cue').classList.contains('warn')) setCue(left > 0 ? `ค้างไว้ หายใจช้าๆ · อีก ${left} วินาที` : 'ค่อยๆ ลดแขนลง');
+    if (st.wrist.length >= 15) {
+      const xs = st.wrist.map(p => p.x), ys = st.wrist.map(p => p.y);
+      const sd = a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); };
+      if ((sd(xs) + sd(ys)) / shW > POSE.tremor) alertOnce('tremor', 'แขนเริ่มสั่น ผ่อนลงเล็กน้อย ไม่ต้องฝืน');
+    }
+    if (t >= POSE.holdSec && t < POSE.holdSec + 0.2) { speak('ค่อยๆ ลดแขนลง หายใจออก'); breath('out'); }
+    if (t > POSE.holdSec + POSE.overHoldSec) alertOnce('overhold', 'พอแล้ว ค่อยๆ ลดแขนลง');
+    if (arm < POSE.enterAngle - 30) {
+      if (t >= POSE.holdSec) go('lower', 'ลดแขนลงช้าๆ หายใจออก', null, 'out');
+      else go('lower', 'ลดแขนก่อนครบเวลาได้ ทำเท่าที่ไหว', null, 'out');
+      st.counted = t >= POSE.holdSec;
+    }
+  } else if (st.phase === 'lower') {
+    if (arm < POSE.exitAngle) {
+      if (st.counted) { session.reps++; updateHud(); }
+      if (session.reps >= POSE.reps) { finish(); return; }
+      go('ready', 'ดีมาก พักสักครู่ แล้วเริ่มรอบถัดไป', 'ดีมาก พักสักครู่', 'hold');
+    }
+  }
+}
+ 
+function loop(){
+  if (!running) return;
+  if (canvas.width !== video.videoWidth) { canvas.width = video.videoWidth; canvas.height = video.videoHeight; }
+  if (video.currentTime !== lastVideoTime) {
+    lastVideoTime = video.currentTime;
+    const res = landmarker.detectForVideo(video, performance.now());
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (res.landmarks && res.landmarks[0]) {
+      const lm = smoothLm(res.landmarks[0]);
+      const warn = $('cue').classList.contains('warn');
+      draw.drawConnectors(lm, PoseLandmarker.POSE_CONNECTIONS, { color: warn ? '#ff8a4c' : '#5fd0b5', lineWidth: 4 });
+      draw.drawLandmarks(lm, { color: '#ffffff', radius: 3 });
+      evaluate(lm);
+    } else {
+      setCue('ยังไม่เห็นร่างกาย ขยับให้อยู่กลางภาพ');
+    }
+  }
+  requestAnimationFrame(loop);
+}
+ 
+/* ---------- 4. สรุป ---------- */
+function finish(){
+  running = false;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  speechSynthesis?.cancel?.();
+  show('sSummary');
+  $('sumTitle').textContent = session.stoppedEarly ? 'หยุดการฝึกแล้ว' : 'ฝึกครบแล้ว เก่งมาก';
+  const names = { lean: 'ลำตัวเอียง', asym: 'แขนสองข้างไม่เท่ากัน', tremor: 'แขนสั่นขณะค้างท่า', overhold: 'ค้างท่านานเกิน' };
+  const al = Object.entries(session.alerts).map(([k, n]) => `${names[k] || k} ${n} ครั้ง`).join(', ') || 'ไม่มี';
+  const mins = Math.max(1, Math.round((Date.now() - session.start) / 60000));
+  $('sumBox').innerHTML = `<table>
+    <tr><td>รอบที่ทำครบ</td><td><b>${session.reps}/${POSE.reps}</b></td></tr>
+    <tr><td>เวลาที่ใช้</td><td>${mins} นาที</td></tr>
+    <tr><td>การแจ้งเตือน</td><td>${al}</td></tr>
+    <tr><td>วันฝึกติดต่อกัน</td><td><b>${streakPreview()} วัน</b></td></tr></table>`;
+}
+function today(){ return new Date().toISOString().slice(0, 10); }
+function streakPreview(){
+  const days = new Set(store.get('dt_days', [])); days.add(today());
+  let n = 0, d = new Date();
+  while (days.has(d.toISOString().slice(0, 10))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+$('btnSend').onclick = () => {
+  const red = $('redflag').checked;
+  const days = store.get('dt_days', []); if (!days.includes(today())) days.push(today()); store.set('dt_days', days);
+  store.set('dt_last', { date: today(), reps: session.reps, alerts: session.alerts, painBefore: +$('painBefore').value, painAfter: +$('painAfter').value, redFlag: red });
+  if (red) alert('ระบบหยุดแผนการฝึกไว้ก่อน แนะนำให้พบแพทย์แผนไทย และได้แจ้งแพทย์ผู้สั่งแล้ว (จำลอง)');
+  switchTab('doc');
+};
+$('btnAgain').onclick = () => { document.querySelectorAll('#screenList input').forEach(c => c.checked = false); $('screenAlert').classList.add('hidden'); $('btnScreen').disabled = false; show('sScreen'); };
+ 
+/* ---------- หน้าจอแพทย์ (ข้อมูลตัวอย่าง) ---------- */
+const SAMPLE = { done: [1,1,0,1,1,1,0,0,1,1,2,1,0,1], pain: [7,7,6,6,6,5,5,5,5,4,5,4,4,3] }; // 2 = มีการแจ้งเตือน
+function renderDoc(){
+  $('calendar').innerHTML = SAMPLE.done.map((v, i) => `<div class="day ${v === 1 ? 'done' : v === 2 ? 'flag' : ''}">${i + 1}</div>`).join('');
+  const w = 320, h = 140, pad = 24, n = SAMPLE.pain.length;
+  const X = i => pad + i * (w - 2 * pad) / (n - 1), Y = v => h - pad - v * (h - 2 * pad) / 10;
+  const pts = SAMPLE.pain.map((v, i) => `${X(i)},${Y(v)}`).join(' ');
+  $('trend').innerHTML = `<line x1="${pad}" y1="${Y(0)}" x2="${w - pad}" y2="${Y(0)}" stroke="#ccc"/>
+    <text x="4" y="${Y(10) + 4}" font-size="10" fill="#777">10</text><text x="8" y="${Y(0) + 4}" font-size="10" fill="#777">0</text>
+    <polyline points="${pts}" fill="none" stroke="#2f6f62" stroke-width="2.5"/>
+    ${SAMPLE.pain.map((v, i) => `<circle cx="${X(i)}" cy="${Y(v)}" r="3" fill="#2f6f62"/>`).join('')}
+    <text x="${pad}" y="${h - 4}" font-size="10" fill="#777">วันที่ 1</text><text x="${w - pad - 30}" y="${h - 4}" font-size="10" fill="#777">วันที่ 14</text>`;
+  $('alertTable').querySelector('tbody').innerHTML = `<tr><td>วันที่ 11</td><td>ลำตัวเอียงขณะยกแขน 3 ครั้ง ระบบลดระดับท่าอัตโนมัติ</td></tr>
+    <tr><td>วันที่ 7–8</td><td>ไม่ได้ฝึก 2 วันติดกัน ระบบส่งข้อความเตือนความจำ</td></tr>`;
+  const last = store.get('dt_last', null);
+  if (last) {
+    const al = Object.values(last.alerts || {}).reduce((s, v) => s + v, 0);
+    $('liveBox').innerHTML = `<table><tr><td>วันที่</td><td>${last.date}</td></tr><tr><td>รอบที่ทำครบ</td><td>${last.reps}/${POSE.reps}</td></tr>
+      <tr><td>คะแนนปวด ก่อน → หลัง</td><td><b>${last.painBefore} → ${last.painAfter}</b></td></tr><tr><td>การแจ้งเตือน</td><td>${al} ครั้ง</td></tr>
+      <tr><td>อาการผิดปกติ</td><td>${last.redFlag ? '<b style="color:#c2551c">มี: ควรติดต่อผู้รับบริการ</b>' : 'ไม่มี'}</td></tr></table>`;
+  }
+}
+function switchTab(t){
+  $('tabUser').classList.toggle('on', t === 'user'); $('tabDoc').classList.toggle('on', t === 'doc');
+  $('userView').classList.toggle('hidden', t !== 'user'); $('docView').classList.toggle('hidden', t !== 'doc');
+  if (t === 'doc') renderDoc();
+}
+$('tabUser').onclick = () => switchTab('user');
+$('tabDoc').onclick = () => switchTab('doc');
+</script>
+</body>
+</html>
